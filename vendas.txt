@@ -1,0 +1,99 @@
+CPF: 088.883.995-26
+Produtos:
+Produto: Computador Quantidade: 9 Preço Unitário: 3000.00 Total: 27000.00
+Produto: Celular Quantidade: 3 Preço Unitário: 800.00 Total: 2400.00
+---------------------------------------------------------------------------------------
+Total da Compra: 29400.00
+Total de Impostos: 2940.000
+Total de Descontos: 0
+Total: 32340.000
+Obrigado Pela Compra! Volte Sempre!
+CPF: 088.883.995-26
+Produtos:
+Produto: Mouse Quantidade: 58 Preço Unitário: 50.00 Total: 2900.00
+Produto: Cadeira Gamer Quantidade: 4 Preço Unitário: 500.00 Total: 2000.00
+---------------------------------------------------------------------------------------
+Total da Compra: 4900.00
+Total de Impostos: 490.000
+Total de Descontos: 0
+Total: 5390.000
+Obrigado Pela Compra! Volte Sempre!
+CPF: 088.883.995-26
+Produtos:
+Produto: Mouse Quantidade: 20 Preço Unitário: 50.00 Total: 1000.00
+---------------------------------------------------------------------------------------
+Total da Compra: 1000.00
+Total de Impostos: 100.000
+Total de Descontos: 50.0000
+Total: 1050.0000
+Obrigado Pela Compra! Volte Sempre!
+CPF: 088.883.995-26
+Produtos:
+Produto: Celular | Quantidade: 2 | Preço Unitário: 800.00 | Total: 1600.00
+---------------------------------------------------------------------------------------
+Total da Compra: 1600.00
+Total de Impostos: 160.000
+Total de Descontos: 80.0000
+Total: 1680.0000
+Obrigado Pela Compra! Volte Sempre!
+CPF: 088.883.995-26
+Produtos:
+Produto: Celular | Quantidade: 4 | Preço Unitário: 800.00 | Total: 3200.00
+---------------------------------------------------------------------------------------
+Total da Compra: 3200.00
+Total de Impostos: 320.000
+Total de Descontos: 160.0000
+Total: 3360.0000
+Obrigado Pela Compra! Volte Sempre!
+CPF: 088.883.995-26
+Produtos:
+Produto: Celular | Quantidade: 5 | Preço Unitário: 800.00 | Total: 4000.00
+---------------------------------------------------------------------------------------
+Total da Compra: 4000.00
+Total de Impostos: 400.000
+Total de Descontos: 200.0000
+Total: 4200.0000
+Obrigado Pela Compra! Volte Sempre!
+CPF: 088.883.995-26
+Produtos:
+Produto: Computador | Quantidade: 7 | Preço Unitário: 3000.00 | Total: 21000.00
+Produto: Computador | Quantidade: 1 | Preço Unitário: 3000.00 | Total: 3000.00
+---------------------------------------------------------------------------------------
+Total da Compra: 24000.00
+Total de Impostos: 2400.000
+Total de Descontos: 1200.0000
+Total: 25200.0000
+Obrigado Pela Compra! Volte Sempre!
+CPF: 088.883.995-26
+Produtos:
+Produto: Celular | Quantidade: 20 | Preço Unitário: 800.00 | Total: 16000.00
+Produto: Celular | Quantidade: 7 | Preço Unitário: 800.00 | Total: 5600.00
+Produto: Mouse | Quantidade: 100 | Preço Unitário: 50.00 | Total: 5000.00
+---------------------------------------------------------------------------------------
+Total da Compra: 26600.00
+Total de Impostos: 2660.000
+Total de Descontos: 1330.0000
+Total: 27930.0000
+Obrigado Pela Compra! Volte Sempre!
+
+CPF: 088.883.995-26
+Produtos:
+Produto: Computador | Quantidade: 1 | Preço Unitário: 3000.00 | Total: 3000.00
+---------------------------------------------------------------------------------------
+Total da Compra: 3000.00
+Total de Impostos: 300.000
+Total de Descontos: 0
+Total: 3300.000
+Obrigado Pela Compra! Volte Sempre!
+
+CPF: 088.883.995-26
+Produtos:
+Produto: Mouse | Quantidade: 30 | Preço Unitário: 50.00 | Total: 1500.00
+Produto: Computador | Quantidade: 1 | Preço Unitário: 3000.00 | Total: 3000.00
+---------------------------------------------------------------------------------------
+Total da Compra: 4500.00
+Total de Impostos: 450.0000
+Total de Descontos: 225.0000
+Total: 4725.0000
+Obrigado Pela Compra! Volte Sempre!
+
