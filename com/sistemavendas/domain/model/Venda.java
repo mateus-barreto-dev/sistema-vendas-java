@@ -3,6 +3,7 @@ package com.sistemavendas.domain.model;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.sistemavendas.domain.strategy.DescontoStrategy;
 
@@ -32,16 +33,14 @@ public class Venda {
     public void adicionarItem(Produto produto, int quantidade){
         produto.darBaixaEstoque(quantidade);
         ItemVenda item = new ItemVenda(produto, quantidade);
-        this.itens.add(item);
-        
+        this.itens.add(item); 
     }
 
     public BigDecimal calcularSubtotal(){
         BigDecimal total = BigDecimal.ZERO;
 
-        for (ItemVenda itemVenda : itens) {
-            total = total.add(itemVenda.getSubtotal());
-        }
+        total = itens.stream().map(ItemVenda::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+
 
         return total;
     }
@@ -57,22 +56,24 @@ public class Venda {
     public String gerarComprovante(){
         StringBuilder comprovante = new StringBuilder();
 
+        comprovante.append("+-------------------------------------------------------------------------------------+\n");
         comprovante.append("CPF: "+ cliente.getFormatado() + "\nProdutos:");
 
-        for (ItemVenda itemVenda : itens) {
-            Produto produto = itemVenda.getProduto();
-            comprovante.append("\nProduto: " + produto.getNome() + " | Quantidade: " + itemVenda.getQuantidade() +
-                                     " | Preço Unitário: " + produto.getPreco() + " | Total: " + itemVenda.getSubtotal());
-        }
+        String produtos_comprados = itens.stream().map(ItemVenda::toString).collect(Collectors.joining("\n"));
+        comprovante.append(produtos_comprados);
 
         comprovante.append("\n---------------------------------------------------------------------------------------");
         comprovante.append("\nTotal da Compra: " + this.calcularSubtotal().toString());
         comprovante.append("\nTotal de Impostos: " + this.calcularImposto().toString());
         comprovante.append("\nTotal de Descontos: " + this.calcularDesconto().toString());
-        comprovante.append("\nTotal: " + this.calcularSubtotal().add(calcularImposto()).subtract(calcularDesconto()).toString());
+        comprovante.append("\nTotal: " + calcularTotalCompra().toString());
         comprovante.append("\nObrigado Pela Compra! Volte Sempre!\n");
-
+        comprovante.append("\n+-------------------------------------------------------------------------------------+");
         return comprovante.toString();
+    }
+
+    public BigDecimal calcularTotalCompra(){
+        return this.calcularSubtotal().add(calcularImposto()).subtract(calcularDesconto());
     }
 
     public CPF getCliente(){

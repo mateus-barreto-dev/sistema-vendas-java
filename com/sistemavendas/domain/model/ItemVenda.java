@@ -35,4 +35,11 @@ public class ItemVenda {
     public BigDecimal getPrecoUnitario(){
         return this.precoUnitario;
     }
+
+   @Override 
+    public String toString(){
+        return String.format("\nProduto: %s | Quantidade: %d | Preço Unitário: R$ %.2f | Total: R$ %.2f",
+                produto.getNome(), quantidade, precoUnitario, getSubtotal());
+    }
+
 }

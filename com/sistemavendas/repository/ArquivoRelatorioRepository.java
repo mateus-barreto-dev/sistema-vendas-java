@@ -1,12 +1,14 @@
 package com.sistemavendas.repository;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
+
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Collections;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 public class ArquivoRelatorioRepository implements RelatorioRepository {
     private final String caminhoArquivo;
@@ -18,25 +20,43 @@ public class ArquivoRelatorioRepository implements RelatorioRepository {
 
     @Override
     public void salvar(String conteudoComprovante) {
-       try (BufferedWriter bw = new BufferedWriter(new FileWriter(caminhoArquivo, true))) {
-            bw.write(conteudoComprovante);
-            bw.newLine();
-       } catch (Exception e) {
-         throw new RuntimeException("Erro ao salvar o relatório no arquivo", e);
-       }
+        try {
+            Files.writeString(Path.of(caminhoArquivo), conteudoComprovante + "\n", 
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            throw new RuntimeException("Erro ao salvar o relatório no arquivo", e);
+        }
     }
+
+
 
     @Override
     public List<String> lerTodos() {
-       try {
-            if (!Files.exists(Paths.get(caminhoArquivo))) {
-                 return Collections.emptyList();
+        try (Stream<String> linhas = Files.lines(Path.of(caminhoArquivo))) {
+            return linhas.toList();
+        } catch (IOException e) {
+            return List.of();
+        }
+    }
+
+    public List<String> buscarNoHistorico(Predicate<String> criterio){
+        List<String> comprovantes = new ArrayList<>();
+        StringBuilder comprovante = new StringBuilder();
+        boolean adicionarLinha = false;
+        for (String string : lerTodos()) {
+            if (string.startsWith("+")) {
+                adicionarLinha = !adicionarLinha;
             }
-            return Files.readAllLines(Paths.get(caminhoArquivo));
-       }
-       catch(IOException e){
-           throw new RuntimeException("Erro ao ler o relatório de vendas", e);
-       }
+
+            comprovante.append(string + "\n");
+
+            if (!adicionarLinha) {
+                comprovantes.add(comprovante.toString());
+                comprovante.setLength(0);
+            }
+        }
+
+        return comprovantes.stream().filter(criterio).toList();
     }
     
 }
