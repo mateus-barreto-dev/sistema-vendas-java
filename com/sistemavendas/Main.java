@@ -2,63 +2,138 @@ package com.sistemavendas;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 import java.util.Arrays;
 
 import com.sistemavendas.domain.exception.EstoqueInsuficienteException;
 import com.sistemavendas.domain.exception.ProdutoNaoEncontradoException;
 import com.sistemavendas.domain.model.CPF;
+import com.sistemavendas.domain.model.CarrinhoDeCompras;
+import com.sistemavendas.domain.model.Cliente;
+import com.sistemavendas.domain.model.ItemVenda;
 import com.sistemavendas.domain.model.Produto;
 import com.sistemavendas.domain.model.Venda;
+import com.sistemavendas.domain.security.Acesso;
+import com.sistemavendas.domain.security.Acesso.Papel;
+import com.sistemavendas.domain.security.Acesso.Permissao;
 import com.sistemavendas.domain.strategy.DescontoBonusStrategy;
 import com.sistemavendas.domain.strategy.DescontoStrategy;
-import com.sistemavendas.domain.strategy.SemDescontoStrategy;
 import com.sistemavendas.repository.ArquivoRelatorioRepository;
 import com.sistemavendas.repository.RelatorioRepository;
+import com.sistemavendas.service.AutorizacaoService;
+import com.sistemavendas.service.ClienteService;
 import com.sistemavendas.service.EstoqueService;
 import com.sistemavendas.service.RelatorioAnaliticoService;
+import com.sistemavendas.service.SessaoService;
 
 
 
 public class Main {
+    static Optional<Cliente> clienteLogado = Optional.empty();
 
-    private enum Opcoes {
-        VENDA(1),
-        MAIS_VENDIDOS(2),
-        HISTORICO(3),
-        HISTORICO_POR_CPF(4),
-        CADASTRAR_PRODUTO(5),
-        REPOR_ESTOQUE(6),
-        ATUALIZAR_PRODUTO(7),
-        EXCLUIR_PRODUTO(8),
-        BUSCAR_PRODUTO_NOME(9),
-        RELATORIO_ANALITICO(10),
-        PATRIMONIO_ESTOQUE(11),
+    private enum Login {
+        CADASTRAR_CLIENTE(1),
+        REALIZAR_LOGIN(2),
+        REALIZAR_LOGOUT(3),
         SAIR(0),
         INVALIDO(-1);
 
         private final int valor;
 
-        private Opcoes(int valor){
+        private Login(int valor){
             this.valor = valor;
         }
 
-        private static Opcoes getOp(int valor){
+        private static Login getOp(int valor){
             
-            return Arrays.stream(Opcoes.values())
+            return Arrays.stream(Login.values())
                     .filter(opcoes -> opcoes.valor == valor)
                     .findFirst()
                     .orElse(INVALIDO);
         }
-
+        
     }
 
-    private enum EstoqueCRUD {
+   
+
+    private enum MenuHistorico {
+        HISTORICO(1),
+        HISTORICO_POR_CPF(2),
+        SAIR(0),
+        INVALIDO(-1);
+
+        private final int valor;
+
+        private MenuHistorico(int valor){
+            this.valor = valor;
+        }
+
+        private static MenuHistorico getOp(int valor){
+            
+            return Arrays.stream(MenuHistorico.values())
+                    .filter(opcoes -> opcoes.valor == valor)
+                    .findFirst()
+                    .orElse(INVALIDO);
+        }
+        
+    }
+
+    private enum MenuMetricas {
+        RELATORIO_ANALITICO(1),
+        PATRIMONIO_ESTOQUE(2),
+        SAIR(0),
+        INVALIDO(-1);
+
+        private final int valor;
+
+        private MenuMetricas(int valor){
+            this.valor = valor;
+        }
+
+        private static MenuMetricas getOp(int valor){
+            
+            return Arrays.stream(MenuMetricas.values())
+                    .filter(opcoes -> opcoes.valor == valor)
+                    .findFirst()
+                    .orElse(INVALIDO);
+        }
+        
+    }
+
+    private enum MenuAtualizarProduto {
         ATUALIZAR_NOME(1),
         ATUALIZAR_PRECO(2),
         ATUALIZAR_QUANTIDADE(3),
-        LISTAR_TODOS(4),
-        LISTAR_BAIXO_ESTOQUE(5),
+        
+        SAIR(0),
+        INVALIDO(-1);
+
+        private final int valor;
+
+        private MenuAtualizarProduto(int valor){
+            this.valor = valor;
+        }
+
+        private static MenuAtualizarProduto getOp(int valor){
+            
+            return Arrays.stream(MenuAtualizarProduto.values())
+                    .filter(opcoes -> opcoes.valor == valor)
+                    .findFirst()
+                    .orElse(INVALIDO);
+        }
+        
+    }
+
+    private enum EstoqueCRUD {
+        CADASTRAR_PRODUTO(1),
+        BUSCAR_PRODUTO_NOME(2),
+        LISTAR_TODOS(3),
+        LISTAR_BAIXO_ESTOQUE(4),
+        MAIS_VENDIDOS(5),
+        REPOR_ESTOQUE(6),
+        ATUALIZAR_PRODUTO(7),
+        REMOVER_PRODUTO(8),    
         SAIR(0),
         INVALIDO(-1);
 
@@ -76,6 +151,190 @@ public class Main {
                     .orElse(INVALIDO);
         }
 
+    }
+
+    private enum MenuInicial {
+        MENU_LOGIN(1),
+        MENU_COMPRAS(2),
+        MENU_PRODUTOS(3),
+        MENU_HISTORICOS(4),
+        MENU_METRICAS(5),
+        SAIR(0),
+        INVALIDO(-1);
+
+        private final int valor;
+
+        private MenuInicial(int valor){
+            this.valor = valor;
+        }
+
+        private static MenuInicial getOp(int valor){
+            
+            return Arrays.stream(MenuInicial.values())
+                    .filter(opcoes -> opcoes.valor == valor)
+                    .findFirst()
+                    .orElse(INVALIDO);
+        }
+
+    }
+
+    private static boolean autorizarUsuario(AutorizacaoService autorizar, Acesso.Permissao permissao){
+        if (clienteLogado.isEmpty()) {
+            System.out.println("Não é possível realizar esta operação sem Logar");
+            return false;
+        }
+        if (!autorizar.temPermissao(clienteLogado.get().getPapel(), permissao)) {
+            System.out.println("Você não possui permissão para esta operação");
+            return false;
+        }
+
+        return true;
+    }
+     
+    private static void menuProdutos(Scanner scanner, EstoqueService estoque, AutorizacaoService autorizar){
+        if (!autorizarUsuario(autorizar, Permissao.ADMINISTRAR_PRODUTOS)) {
+            return;
+        }
+        while (true) {
+            System.out.println("\n\tBem vindo ao Menu de Produtos");
+            System.out.println("Selecione uma das Opções abaixo:");
+            System.out.println( "1. Cadastrar Produto\r\n" + 
+                                "2. Buscar Produto por Nome\r\n" + 
+                                "3. Listar Todos os Produtos\r\n" + 
+                                "4. Listar Produtos com Baixo Estoque\r\n" + 
+                                "5. Listar Mais Vendidos \r\n" + 
+                                "6. Repor Estoque \r\n" + 
+                                "7. Atualizar Produto \r\n" + 
+                                "8. Remover Produto \r\n" + 
+                                "0. Sair");
+
+            int opInt = lerEntradaInt(scanner);
+            EstoqueCRUD opcoes = EstoqueCRUD.getOp(opInt);
+
+            switch (opcoes) {
+                case CADASTRAR_PRODUTO:
+                    cadastrarProduto(scanner, estoque);
+                    break;
+                case BUSCAR_PRODUTO_NOME:
+                    buscarProdutoNome(scanner, estoque);
+                    break;
+                case LISTAR_TODOS:
+                    listarTodos(estoque);
+                    break; 
+                case LISTAR_BAIXO_ESTOQUE:
+                    listarProdutosEstoqueBaixo(scanner, estoque);
+                    break;
+                case MAIS_VENDIDOS:
+                    listarMaisVendidos(estoque);
+                    break;
+                case REPOR_ESTOQUE:
+                    reporEstoque(scanner, estoque);
+                    break;
+                case ATUALIZAR_PRODUTO:
+                    atualizarProduto(scanner, estoque);
+                    break;
+                case REMOVER_PRODUTO:
+                    excluirProduto(scanner, estoque);
+                    break;
+                case SAIR:
+                    return;
+                default:
+                    System.out.println("Opção Inválida");
+                    break;
+            }         
+        }
+    }
+
+
+    private static void menuHistorico(Scanner scanner, RelatorioRepository repository, AutorizacaoService autorizar){
+        if (!autorizarUsuario(autorizar, Permissao.CONSULTAR_HISTORICO)) {
+            return;
+        }
+
+        while (true) {
+            System.out.println("\n\tBem vindo ao Menu de Históricos");
+            System.out.println("Selecione uma das Opções abaixo:");
+            System.out.println( "1. Visualizar Historico Geral\r\n" + 
+                                "2. Visualizar Historico por CPF\r\n" + 
+                                "0. Sair");
+
+            int opInt = lerEntradaInt(scanner);
+            MenuHistorico opcoes = MenuHistorico.getOp(opInt);
+
+            switch (opcoes) {
+                case HISTORICO:
+                    mostrarHistorico(repository);
+                    break;
+                case HISTORICO_POR_CPF:
+                    mostrarHistoricoPorCPF(scanner, repository);
+                    break;
+                case SAIR:
+                    return;
+                    
+                default:
+                    System.out.println("Opção Inválida");
+                    break;
+             }
+        }
+    }
+    private static void menuRelatorio(Scanner scanner, RelatorioAnaliticoService relatorio, EstoqueService estoque, AutorizacaoService autorizar){
+        if (!autorizarUsuario(autorizar, Permissao.CONSULTAR_RELATORIOS)) {
+            return;
+        }
+
+        while(true){   
+            System.out.println("\n\tBem vindo ao Menu de Relatórios");
+            System.out.println("Selecione uma das Opções abaixo:");
+            System.out.println( "1. Visualizar Relatório Analítico\r\n" + 
+                                "2. Visualizar Patrimônio em Estoque\r\n" + 
+                                "0. Sair");
+            int opInt = lerEntradaInt(scanner);
+            MenuMetricas opcoes = MenuMetricas.getOp(opInt);
+
+            switch (opcoes) {
+                case RELATORIO_ANALITICO:
+                    mostrarRelatorioAnalitico(relatorio);
+                    break;
+                case PATRIMONIO_ESTOQUE:
+                    mostrarPatrimonioEstoque(estoque);
+                    break;
+                case SAIR:
+                    return;
+                default:
+                    System.out.println("Opção Inválida");
+                    break;
+            }
+        }
+    }
+
+    private static void menuLogin(Scanner scanner, SessaoService sessao, ClienteService clientes){
+        while(true){   
+            System.out.println("\n\tBem vindo ao Menu de Relatórios");
+            System.out.println("Selecione uma das Opções abaixo:");
+            System.out.println( "1. Cadastrar Usuário\r\n" + 
+                                "2. Realizar Login\r\n" + 
+                                "3. Realizar Logout\r\n" + 
+                                "0. Sair");
+            int opInt = lerEntradaInt(scanner);
+            Login opcoes = Login.getOp(opInt);
+
+            switch (opcoes) {
+                case CADASTRAR_CLIENTE:
+                    cadastrarCliente(scanner, clientes);
+                    break;
+                case REALIZAR_LOGIN:
+                    realizarLogin(sessao, scanner);
+                    break;
+                case REALIZAR_LOGOUT:
+                    realizarLogout(sessao, scanner);
+                    break;
+                case SAIR:
+                    return;
+                default:
+                    System.out.println("Opção Inválida");
+                    break;
+            }
+        }
     }
 
     private static void listarTodos(EstoqueService estoque){
@@ -158,6 +417,74 @@ public class Main {
         }
     }
 
+    private static String obterSenhaValida(Scanner scanner){
+        while (true) {
+            System.out.println("Informe sua Senha:\n");
+            String inputSenha = scanner.nextLine();
+            try {
+                if (!inputSenha.isBlank()) {
+                    return inputSenha;
+                }
+                throw new IllegalArgumentException("Senha Inválida");
+            } catch (Exception e) {
+                System.out.println("Ocorreu um erro interno inesperado no sistema!");
+                System.out.println("Detalhes técnicos: " + e.getClass().getName() + " - " + e.getMessage());
+            }
+        }
+    }
+
+    private static String obterEmailValido(Scanner scanner){
+        while (true) {
+            System.out.println("Informe seu Email:\n");
+            String inputEmail = scanner.nextLine();
+            try {
+                if (inputEmail.contains("@") && inputEmail.contains(".")) {
+                    return inputEmail;
+                }
+                throw new IllegalArgumentException("Email Inválido");
+            } catch (Exception e) {
+                System.out.println("Ocorreu um erro interno inesperado no sistema!");
+                System.out.println("Detalhes técnicos: " + e.getClass().getName() + " - " + e.getMessage());
+            }
+        }
+    }
+
+    private static String obterNomeValido(Scanner scanner){
+        while (true) {
+            System.out.println("Informe seu Nome:\n");
+            String inputNome = scanner.nextLine();
+            try {
+                if (!inputNome.isBlank()) {
+                    return inputNome;
+                }
+                throw new IllegalArgumentException("Nome Inválido");
+            } catch (Exception e) {
+                System.out.println("Ocorreu um erro interno inesperado no sistema!");
+                System.out.println("Detalhes técnicos: " + e.getClass().getName() + " - " + e.getMessage());
+            }
+        }
+    }
+
+    private static Papel obterPapel(Scanner scanner){
+        while (true) {
+            System.out.println("Informe seu Papel:\n");
+            System.out.println("1 - ADMIN");
+            System.out.println("2 - CLIENTE");
+            int inputPapel = lerEntradaInt(scanner);
+            Papel papel = Papel.getPapel(inputPapel);
+
+            try {
+                if (!papel.equals(Papel.INVALIDO)) {
+                    return papel;
+                }
+                throw new IllegalArgumentException("Papel Inválido");
+            } catch (Exception e) {
+                System.out.println("Ocorreu um erro interno inesperado no sistema!");
+                System.out.println("Detalhes técnicos: " + e.getClass().getName() + " - " + e.getMessage());
+            }
+        }
+    }
+
     private static DescontoStrategy obterEstrategiaDesconto(Scanner scanner) {
         while (true) {
             System.out.println("Quantos pontos bônus você tem?");
@@ -170,8 +497,12 @@ public class Main {
         }
     }
 
-    private static void adicionarProdutosNaVenda(Scanner scanner, EstoqueService estoque, Venda venda) {
-        while (true) {
+    private static void adicionarProdutosNaVenda(Scanner scanner, EstoqueService estoque, Venda venda, CarrinhoDeCompras carrinhoDeCompras) {
+        List<ItemVenda> itensNoCarrinho = carrinhoDeCompras.getItens();
+        
+        itensNoCarrinho.stream().forEach(item -> venda.adicionarItem(item.getProduto(), item.getQuantidade()));
+    }
+    private static void adicionarProdutoCarrinho(Scanner scanner, EstoqueService estoque, CarrinhoDeCompras carrinho){
             System.out.println("\n--- Produtos Disponíveis ---");
 
             estoque.listarTodosDisponiveis().forEach(System.out::println);
@@ -188,42 +519,110 @@ public class Main {
             
             if (produto == null || produto.getQuantidadeEstoque() == 0) {
                 System.out.println("Produto indisponível. Informe outro valor.");
-                continue;
+                return;
+            }
+
+            
+            int quantidadeAnterior = 0, quantidadeMaxima = -1;
+            ItemVenda item = null;
+            Optional<ItemVenda> itemEncontrado = carrinho.encontrarItem(id);
+            if (!itemEncontrado.isEmpty()) {
+                item = itemEncontrado.get();
+                quantidadeAnterior = item.getQuantidade();
+                quantidadeMaxima = produto.getQuantidadeEstoque() - quantidadeAnterior;
+                System.out.println("Você já adicionou " + quantidadeAnterior + " exemplar(es) deste item ao carrinho");
+                System.out.println("Quantidade Máxima Disponível para ser adicionada de: " + produto.getNome() + " é: " + quantidadeMaxima);
             }
 
             System.out.println("Informe a quantidade desejada do produto: " + produto.getNome());
             int quantidade;
-
-          
             quantidade = lerEntradaInt(scanner);
-            
 
-            try {
-                venda.adicionarItem(produto, quantidade);
-                System.out.println("Item adicionado com sucesso!");
-            } catch (EstoqueInsuficienteException | ProdutoNaoEncontradoException e) {
-                System.out.println("Erro ao adicionar item: " + e.getMessage());
-                continue;
+            if (quantidadeMaxima != -1 && quantidade > quantidadeMaxima) {
+                System.out.println("Compra Cancelada!");
+                System.out.println("A quantidade Informada Supera a Quantidade Máxima");
+                return;
             }
 
-            System.out.println("\nGostaria de comprar outro produto? (S/N)");
-            String resposta = scanner.nextLine().trim().toUpperCase();
-            if (!resposta.equals("S")) {
-                break;
+
+            try {
+                carrinho.removerItem(item);
+                carrinho.adicionarItem(produto, quantidade + quantidadeAnterior );
+                System.out.println("Item adicionado com sucesso!");
+            } catch (Exception e) {
+                System.out.println("Erro ao adicionar item: " + e.getMessage());
+            }
+
+    }
+
+    private static void removerUltimoProdutoCarrinho(Scanner scanner, CarrinhoDeCompras carrinho){
+        ItemVenda ultimoItem;
+        try {
+            ultimoItem = carrinho.removerUltimoItem();
+        } catch (Exception e) {
+            System.out.println("Não foi possível remover o Produto: " + e.getMessage());
+            return;
+        }
+       System.out.println("Produto removido com Sucesso!");
+       System.out.println("Produto Removido:\n" + ultimoItem);
+    }
+    private static void listarConteudoCarrinho(CarrinhoDeCompras carrinho){
+        carrinho.getItens().stream().forEach(System.out::println);
+    }
+
+    private static void menuCarrinhoDeCompras(Scanner scanner, EstoqueService estoque, CarrinhoDeCompras carrinho){
+        int opcao = 0;
+        while (true) {
+            
+            System.out.println("\nBem vindo ao Carrinho de Compras!");
+            System.out.println("Selecione uma das Opções abaixo:");
+            System.out.println( "1. Adicionar um Produto ao Carrinho\r\n" + 
+                                "2. Remover Ultimo Produto Adicionado ao Carrinho\r\n" + 
+                                "3. Listar Todos os Produtos no Carrinho\r\n" + 
+                                "0. Finalizar Compra");
+            opcao = lerEntradaInt(scanner);
+            switch (opcao) {
+                case 1:
+                    adicionarProdutoCarrinho(scanner,  estoque, carrinho);
+                    break;
+                case 2:
+                    removerUltimoProdutoCarrinho(scanner, carrinho);
+                    break;
+                case 3:
+                    listarConteudoCarrinho(carrinho);
+                    break;
+                case 0:
+                    return;
+    
+                default:
+                    System.out.println("Informe uma Opção válida");
+                    break;
             }
         }
     }
+
+
     private static void realizarVenda(Scanner scanner, EstoqueService estoque,
-         RelatorioRepository repository, RelatorioAnaliticoService relatorio) {
+         RelatorioRepository repository, RelatorioAnaliticoService relatorio, AutorizacaoService autorizar) {
+
+        if (!autorizarUsuario(autorizar, Permissao.REALIZAR_VENDA)) {
+            return;
+        }
+
         System.out.println("Bem-vindo ao Painel de Vendas!\n");
 
-        CPF cpf = obterCPFValido(scanner);
+        CPF cpf = clienteLogado.get().getCPF();
         DescontoStrategy descontoStrategy = obterEstrategiaDesconto(scanner);
+
+        CarrinhoDeCompras carrinhoDeCompras = new CarrinhoDeCompras();
+        menuCarrinhoDeCompras(scanner, estoque, carrinhoDeCompras);
+
+
 
         // Percentual de imposto padrão: 10%
         Venda venda = new Venda(cpf, new BigDecimal("0.10"), descontoStrategy);
 
-        adicionarProdutosNaVenda(scanner, estoque, venda);
+        adicionarProdutosNaVenda(scanner, estoque, venda, carrinhoDeCompras);
         
         if (venda.getItens().isEmpty()) {
             System.out.println("\nNenhum item foi adicionado. Venda cancelada.\n");
@@ -368,12 +767,10 @@ public class Main {
             System.out.println( "1. Atualizar Nome\r\n" + 
                                 "2. Atualizar Preço\r\n" + 
                                 "3. Atualizar Quantidade Estocada\r\n" + 
-                                "4. Listar Todos os Produtos \r\n" + 
-                                "5. Listar Produtos com Estoque Baixo \r\n" + 
                                 "0. Sair");
           
             int input = lerEntradaInt(scanner);
-            EstoqueCRUD op = EstoqueCRUD.getOp(input);
+            MenuAtualizarProduto op = MenuAtualizarProduto.getOp(input);
 
             switch (op) {
                 case ATUALIZAR_NOME:
@@ -385,12 +782,6 @@ public class Main {
                 case ATUALIZAR_QUANTIDADE:
                     atualizarQuantidade(scanner, estoque);
                     break; 
-                case LISTAR_TODOS:
-                    listarTodos(estoque);
-                    break; 
-                case LISTAR_BAIXO_ESTOQUE:
-                    listarProdutosEstoqueBaixo(scanner, estoque);
-                    break;  
                 case SAIR:
                     atualizando = false;
                     break;           
@@ -451,72 +842,100 @@ public class Main {
         estoque.cadastrarProduto(new Produto(4, "Cadeira Gamer", new BigDecimal("500.00"), 5));
         estoque.cadastrarProduto(new Produto(5, "Roteador Wi-Fi", new BigDecimal("100.00"), 0));
     }
+   
     
+    private static void realizarLogin(SessaoService sessaoService, Scanner scanner){   
+        CPF cpf = obterCPFValido(scanner);
+        String senha = obterSenhaValida(scanner);
+
+        clienteLogado = sessaoService.autenticar(cpf, senha);
+
+        if (clienteLogado.isEmpty()) {
+            System.out.println("Não foi possível realizar login");
+            return;
+        }
+
+        System.out.println("Usuário Logado");
+    }
+
+    private static void cadastrarCliente(Scanner scanner, ClienteService clientes){
+        Cliente novoCliente;
+        String nome = obterNomeValido(scanner);
+        CPF cpf = obterCPFValido(scanner);
+        String email = obterEmailValido(scanner);
+        String senha = obterSenhaValida(scanner);
+        Papel papel = obterPapel(scanner);
+
+        try {
+            novoCliente = new Cliente(nome, email, senha, cpf, papel);
+        } catch (Exception e) {
+            System.out.println("Não foi possível criar este Usuário: " + e.getMessage());
+            return;
+        }
+
+        try {
+            clientes.cadastrarCliente(novoCliente);
+        } catch (Exception e) {
+           System.out.println("Não foi possível cadastrar este Usuário: " + e.getMessage());
+           return;
+        }
+        
+        System.out.println("Usuário Cadastrado com Sucesso");
+    }
+
+    private static void realizarLogout(SessaoService sessaoService, Scanner scanner){
+        clienteLogado = Optional.empty();
+        System.out.println("Logout Realizado com Sucesso");
+    }
     public static void main(String[] args) {
+        
+
+        ClienteService clientes = new ClienteService();
+        AutorizacaoService autorizar = new AutorizacaoService();
+        SessaoService sessao = new SessaoService(10, 5, clientes);
+
         RelatorioAnaliticoService relatorio = new RelatorioAnaliticoService();
         EstoqueService estoque = new EstoqueService();
         RelatorioRepository repository = new ArquivoRelatorioRepository("vendas.txt");
+
         Scanner scanner = new Scanner(System.in);
         boolean aberto = true;
         int opInt = 0;
 
         popularEstoqueInicial(estoque);
         
+        
 
         while (aberto) {
             System.out.println("\n\tBem vindo a Loja");
             System.out.println("Selecione uma das Opções abaixo:");
-            System.out.println("1. Realizar Nova Venda\r\n" + 
-                                "2. Consultar Produtos Mais Vendidos\r\n" + 
-                                "3. Ver Histórico de Vendas (Arquivo)\r\n" + 
-                                "4. Ver Histórico por CPF \r\n" + 
-                                "5. Cadastrar Novo Produto \r\n" + 
-                                "6. Repor Estoque de um Produto \r\n" + 
-                                "7. Atualizar Produto \r\n" + 
-                                "8. Excluir Produto \r\n" + 
-                                "9. Buscar Produto pelo Nome \r\n" + 
-                                "10. Ver Relatório Analítico \r\n" + 
-                                "11. Consultar o Patrimônio do Estoque \r\n" + 
+            System.out.println( "1. Acessar Menu de Login\r\n" + 
+                                "2. Realizar uma Venda\r\n" + 
+                                "3. Acessar Menu de Produtos\r\n" + 
+                                "4. Acessar Menu de Históricos \r\n" + 
+                                "5. Acessar Menu de Métricas \r\n" + 
                                 "0. Sair");
           
                                
             
             opInt = lerEntradaInt(scanner);
-            Opcoes opcoes = Opcoes.getOp(opInt);
+            MenuInicial opcoes = MenuInicial.getOp(opInt);
 
             switch (opcoes) {
-                case VENDA:
-                    realizarVenda(scanner, estoque, repository, relatorio);
+                case MENU_LOGIN:
+                    menuLogin(scanner, sessao, clientes);
                     break;
-                case MAIS_VENDIDOS:
-                    listarMaisVendidos(estoque);
+                case MENU_COMPRAS:
+                    realizarVenda(scanner, estoque, repository, relatorio, autorizar);
                     break;
-                case HISTORICO:
-                    mostrarHistorico(repository);
+                case MENU_PRODUTOS:
+                    menuProdutos(scanner, estoque, autorizar);
                     break;
-                case HISTORICO_POR_CPF:
-                    mostrarHistoricoPorCPF(scanner, repository);
+                case MENU_HISTORICOS:
+                    menuHistorico(scanner, repository, autorizar);
                     break;
-                case CADASTRAR_PRODUTO:
-                    cadastrarProduto(scanner, estoque);
-                    break;
-                case REPOR_ESTOQUE:
-                    reporEstoque(scanner, estoque);
-                    break;
-                case ATUALIZAR_PRODUTO:
-                    atualizarProduto(scanner, estoque);
-                    break;
-                case EXCLUIR_PRODUTO:
-                    excluirProduto(scanner, estoque);
-                    break;
-                case BUSCAR_PRODUTO_NOME:
-                    buscarProdutoNome(scanner, estoque);
-                    break;
-                case RELATORIO_ANALITICO:
-                    mostrarRelatorioAnalitico(relatorio);
-                    break;
-                case PATRIMONIO_ESTOQUE:
-                    mostrarPatrimonioEstoque(estoque);
+                case MENU_METRICAS:
+                    menuRelatorio(scanner, relatorio, estoque, autorizar);
                     break;    
                 case SAIR:
                     aberto = false;
